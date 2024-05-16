@@ -7,13 +7,19 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair; // Tambahan: Import untuk Pair
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.harissabil.librarian.MainViewModel;
 import com.harissabil.librarian.core.adapter.BookHistoryListAdapter;
+import com.harissabil.librarian.core.data_structure.searching.LinearSearch; // Tambahan: Import untuk LinearSearch
+import com.harissabil.librarian.data.model.Book; // Tambahan: Import untuk model Book
 import com.harissabil.librarian.databinding.FragmentHistoryBinding;
+
+import java.util.ArrayList; // Tambahan: Import untuk ArrayList
+import java.util.LinkedList; // Tambahan: Import untuk LinkedList
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -27,7 +33,6 @@ public class HistoryFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         viewModel = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
     }
 
@@ -41,23 +46,26 @@ public class HistoryFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
         setupRecyclerView();
 
         viewModel.getHistoryState().observe(getViewLifecycleOwner(), state -> {
+            if (!Boolean.TRUE.equals(viewModel.isLoading().getValue())) { // Tambahan: Memeriksa apakah data sedang dimuat
+                viewModel.getSearchQuery().observe(getViewLifecycleOwner(), query -> {
+                    LinkedList<Pair<Long, Book>> filteredBooks = query.isEmpty() ? state.getBooks() // Tambahan: Logika untuk memfilter buku berdasarkan query pencarian
+                            : LinearSearch.linearSearchByTitle(state.getBooks(), query);
+                    adapter.submitList(new ArrayList<>(filteredBooks)); // Tambahan: Memperbarui daftar buku yang ditampilkan
+                });
+            }
             if (state.getBooks().isEmpty()) {
                 binding.ivEmptyBooks.setVisibility(View.VISIBLE);
             } else {
                 binding.ivEmptyBooks.setVisibility(View.GONE);
             }
-            //TODO: Show the list of books from the history state
-            // write your code here
         });
     }
 
     private void setupRecyclerView() {
         adapter = new BookHistoryListAdapter();
-
         binding.rvBooks.setHasFixedSize(true);
         binding.rvBooks.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvBooks.setAdapter(adapter);
